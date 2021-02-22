@@ -225,6 +225,7 @@ static int uvClientSend(struct uvClient *c, struct uvSend *send)
     rv = uv_write(&send->write, c->stream, send->bufs, send->n_bufs,
                   uvSendWriteCb);
     if (rv != 0) {
+        printf("write message failed -> rv %d", rv); fflush(stdout);
         tracef("write message failed -> rv %d", rv);
         /* UNTESTED: what are the error conditions? perhaps ENOMEM */
         return RAFT_IOERR;

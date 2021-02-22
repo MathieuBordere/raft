@@ -36,6 +36,7 @@ static int recvMessage(struct raft *r, struct raft_message *message)
     /* tracef("%s from server %ld", message_descs[message->type - 1],
        message->server_id); */
 
+    printf("state %u type %u\n", r->state, message->type); fflush(stdout);
     switch (message->type) {
         case RAFT_IO_APPEND_ENTRIES:
             rv = recvAppendEntries(r, message->server_id,
