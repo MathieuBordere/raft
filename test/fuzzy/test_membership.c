@@ -111,3 +111,48 @@ TEST(membership, removeVoting, setup, tear_down, 0, _params)
 
     return 0;
 }
+
+TEST(membership, removeVotingPromoteSpare, NULL, NULL, 0, NULL)
+{
+    struct fixture *f = munit_malloc(sizeof *f);
+    SETUP_CLUSTER(4);
+
+    /* 3 voting nodes, 1 standby */
+    CLUSTER_BOOTSTRAP_N_VOTING(3);
+    CLUSTER_RANDOMIZE;
+    CLUSTER_START;
+    CLUSTER_STEP_UNTIL_HAS_LEADER(10000);
+
+    struct raft *raft;
+    int state = -1;
+    const struct raft_server *server;
+    int rv;
+    int i;
+
+    /* Remove a voter, index 3 is standby */
+    for (i = 0; i < 3; i++) {
+        raft = CLUSTER_RAFT(i);
+        server = &raft->configuration.servers[i];
+        if (server->role == RAFT_VOTER && i != CLUSTER_LEADER) {
+                /* i will be removed from the cluster */
+                break;
+        }
+    }
+
+    munit_assert_int(i, <, 3);
+
+    raft = CLUSTER_RAFT(CLUSTER_LEADER);
+    rv = raft_remove(raft, &f->req, i+1, NULL);
+    munit_assert_int(rv, ==, 0);
+    CLUSTER_STEP_UNTIL_APPLIED(CLUSTER_LEADER, 2, 2000);
+
+    /* Make the last added server a voter */
+    CLUSTER_ASSIGN(&f->req, RAFT_VOTER);
+    CLUSTER_STEP_UNTIL_APPLIED(CLUSTER_N, 3, 8800);
+
+    raft = CLUSTER_RAFT(CLUSTER_LEADER);
+    server = &raft->configuration.servers[CLUSTER_N - 1];
+    munit_assert_int(server->role, ==, RAFT_VOTER);
+
+    return 0;
+}

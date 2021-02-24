@@ -11,17 +11,20 @@ int membershipCanChangeConfiguration(struct raft *r)
 {
     int rv;
 
+    fprintf(stderr, "Can change\n"); fflush(stderr);
     if (r->state != RAFT_LEADER || r->transfer != NULL) {
         rv = RAFT_NOTLEADER;
         goto err;
     }
 
     if (r->configuration_uncommitted_index != 0) {
+        fprintf(stderr, "Cant change 1\n"); fflush(stderr);
         rv = RAFT_CANTCHANGE;
         goto err;
     }
 
     if (r->leader_state.promotee_id != 0) {
+        fprintf(stderr, "Cant change 2\n"); fflush(stderr);
         rv = RAFT_CANTCHANGE;
         goto err;
     }
@@ -39,6 +42,7 @@ int membershipCanChangeConfiguration(struct raft *r)
     assert(r->leader_state.round_index == 0);
     assert(r->leader_state.round_start == 0);
 
+    fprintf(stderr, "Can change success\n"); fflush(stderr);
     return 0;
 
 err:
