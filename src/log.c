@@ -546,12 +546,14 @@ int logAppendConfiguration(struct raft_log *l,
     /* Encode the configuration into a buffer. */
     rv = configurationEncode(configuration, &buf);
     if (rv != 0) {
+        fprintf(stderr, "logAppendConfiguration configurationEncode failed %d\n", rv); fflush(stderr);
         goto err;
     }
 
     /* Append the new entry to the log. */
     rv = logAppend(l, term, RAFT_CHANGE, &buf, NULL);
     if (rv != 0) {
+        fprintf(stderr, "logAppendConfiguration logAppend failed %d\n", rv); fflush(stderr);
         goto err_after_encode;
     }
 

@@ -594,6 +594,7 @@ int replicationTrigger(struct raft *r, raft_index index)
  * configuration to the local log and triggers its replication. */
 static int triggerActualPromotion(struct raft *r)
 {
+    fprintf(stderr, "triggerActualPromotion promotee_id %llu\n", r->leader_state.promotee_id); fflush(stderr);
     raft_index index;
     raft_term term = r->current_term;
     size_t server_index;
@@ -622,18 +623,21 @@ static int triggerActualPromotion(struct raft *r)
     /* Encode the new configuration and append it to the log. */
     rv = logAppendConfiguration(&r->log, term, &r->configuration);
     if (rv != 0) {
+        fprintf(stderr, "triggerActualPromotion logAppendConfiguration failed %d\n", rv); fflush(stderr);
         goto err;
     }
 
     /* Start writing the new log entry to disk and send it to the followers. */
     rv = replicationTrigger(r, index);
     if (rv != 0) {
+        fprintf(stderr, "triggerActualPromotion replicationTrigger failed %d\n", rv); fflush(stderr);
         goto err_after_log_append;
     }
 
     r->leader_state.promotee_id = 0;
     r->configuration_uncommitted_index = logLastIndex(&r->log);
 
+    fprintf(stderr, "triggerActualPromotion success %d\n", rv); fflush(stderr);
     return 0;
 
 err_after_log_append:
@@ -722,6 +726,7 @@ int replicationUpdate(struct raft *r,
                         r->leader_state.promotee_id == server->id;
     if (is_being_promoted) {
         bool is_up_to_date = membershipUpdateCatchUpRound(r);
+        fprintf(stderr, "Replication is_being_promoted:%d is_up_to_date:%d\n", is_being_promoted, is_up_to_date); fflush(stderr);
         if (is_up_to_date) {
             rv = triggerActualPromotion(r);
             if (rv != 0) {
@@ -1334,6 +1339,7 @@ static void applyBarrier(struct raft *r, const raft_index index)
 /* Apply a RAFT_CHANGE entry that has been committed. */
 static void applyChange(struct raft *r, const raft_index index)
 {
+    fprintf(stderr, "applyChange\n"); fflush(stderr);
     struct raft_change *req;
 
     assert(index > 0);
@@ -1351,6 +1357,7 @@ static void applyChange(struct raft *r, const raft_index index)
     if (r->state == RAFT_LEADER) {
         const struct raft_server *server;
         req = r->leader_state.change;
+        fprintf(stderr, "applyChange req:%p done\n", (void*) req); fflush(stderr);
         r->leader_state.change = NULL;
 
         /* If we are leader but not part of this new configuration, step

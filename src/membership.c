@@ -13,16 +13,19 @@ int membershipCanChangeConfiguration(struct raft *r)
 
     if (r->state != RAFT_LEADER || r->transfer != NULL) {
         rv = RAFT_NOTLEADER;
+        fprintf(stderr, "membershipCanChangeConfiguration RAFT_NOTLEADER transfer:%p %llu\n", (void*)r->transfer, r->id); fflush(stderr);
         goto err;
     }
 
     if (r->configuration_uncommitted_index != 0) {
         rv = RAFT_CANTCHANGE;
+        fprintf(stderr, "membershipCanChangeConfiguration uncommitted_index %llu %llu\n", r->configuration_uncommitted_index, r->id); fflush(stderr);
         goto err;
     }
 
     if (r->leader_state.promotee_id != 0) {
         rv = RAFT_CANTCHANGE;
+        fprintf(stderr, "membershipCanChangeConfiguration promotee_id %llu %llu\n", r->leader_state.promotee_id, r->id); fflush(stderr);
         goto err;
     }
 
@@ -39,6 +42,7 @@ int membershipCanChangeConfiguration(struct raft *r)
     assert(r->leader_state.round_index == 0);
     assert(r->leader_state.round_start == 0);
 
+    fprintf(stderr, "membershipCanChangeConfiguration SUCCESS %llu\n", r->id); fflush(stderr);
     return 0;
 
 err:

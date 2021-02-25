@@ -226,20 +226,24 @@ int raft_assign(struct raft *r,
     raft_index last_index;
     int rv;
 
+    fprintf(stderr, "Assign leader:%llu id:%llu role:%d\n", r->id, id, role); fflush(stderr);
     if (role != RAFT_STANDBY && role != RAFT_VOTER && role != RAFT_SPARE) {
         rv = RAFT_BADROLE;
         ErrMsgFromCode(r->errmsg, rv);
+        fprintf(stderr, "Assign RAFT_BADROLE\n"); fflush(stderr);
         return rv;
     }
 
     rv = membershipCanChangeConfiguration(r);
     if (rv != 0) {
+        fprintf(stderr, "Assign membershipCanChangeConfiguration was false\n"); fflush(stderr);
         return rv;
     }
 
     server = configurationGet(&r->configuration, id);
     if (server == NULL) {
         rv = RAFT_NOTFOUND;
+        fprintf(stderr, "Assign server id:%llu not found\n", id); fflush(stderr);
         ErrMsgPrintf(r->errmsg, "no server has ID %llu", id);
         goto err;
     }
@@ -264,6 +268,7 @@ int raft_assign(struct raft *r,
                 break;
         }
         ErrMsgPrintf(r->errmsg, "server is already %s", name);
+        fprintf(stderr, "Assign server id:%llu already has role\n", id); fflush(stderr);
         goto err;
     }
 
@@ -282,18 +287,22 @@ int raft_assign(struct raft *r,
      * immediately. */
     if (role != RAFT_VOTER ||
         progressMatchIndex(r, server_index) == last_index) {
+        fprintf(stderr, "Assign log up-to-date or not-voter\n"); fflush(stderr);
         int old_role = r->configuration.servers[server_index].role;
         r->configuration.servers[server_index].role = role;
 
         rv = clientChangeConfiguration(r, req, &r->configuration);
         if (rv != 0) {
+            fprintf(stderr, "Assign clientChangeConfiguration failed %d\n", rv); fflush(stderr);
             r->configuration.servers[server_index].role = old_role;
             return rv;
         }
 
+        fprintf(stderr, "Assign success immediate\n"); fflush(stderr);
         return 0;
     }
 
+    fprintf(stderr, "Assign set promotee_id to %llu and start catch up\n", server->id); fflush(stderr);
     r->leader_state.promotee_id = server->id;
 
     /* Initialize the first catch-up round. */
@@ -305,10 +314,12 @@ int raft_assign(struct raft *r,
     rv = replicationProgress(r, server_index);
     if (rv != 0 && rv != RAFT_NOCONNECTION) {
         /* This error is not fatal. */
+        fprintf(stderr, "Assign replicationProgress failed %d (NOT FATAL)\n", rv); fflush(stderr);
         tracef("failed to send append entries to server %u: %s (%d)",
                server->id, raft_strerror(rv), rv);
     }
 
+    fprintf(stderr, "Assign success req:%p\n", (void*) req); fflush(stderr);
     return 0;
 
 err:
@@ -321,17 +332,20 @@ int raft_remove(struct raft *r,
                 raft_id id,
                 raft_change_cb cb)
 {
+    fprintf(stderr, "Remove leader:%llu id:%llu\n", r->id, id); fflush(stderr);
     const struct raft_server *server;
     struct raft_configuration configuration;
     int rv;
 
     rv = membershipCanChangeConfiguration(r);
     if (rv != 0) {
+        fprintf(stderr, "Remove membershipCanChangeConfiguration failed %d\n", rv); fflush(stderr);
         return rv;
     }
 
     server = configurationGet(&r->configuration, id);
     if (server == NULL) {
+        fprintf(stderr, "Remove configurationGet failed BADID\n"); fflush(stderr);
         rv = RAFT_BADID;
         goto err;
     }
@@ -342,11 +356,13 @@ int raft_remove(struct raft *r,
      * from it. */
     rv = configurationCopy(&r->configuration, &configuration);
     if (rv != 0) {
+        fprintf(stderr, "Remove configurationCopy failed %d\n", rv); fflush(stderr);
         goto err;
     }
 
     rv = configurationRemove(&configuration, id);
     if (rv != 0) {
+        fprintf(stderr, "Remove configurationRemove failed %d\n", rv); fflush(stderr);
         goto err_after_configuration_copy;
     }
 
@@ -354,12 +370,14 @@ int raft_remove(struct raft *r,
 
     rv = clientChangeConfiguration(r, req, &configuration);
     if (rv != 0) {
+        fprintf(stderr, "Remove clientChangeConfiguration failed %d\n", rv); fflush(stderr);
         goto err_after_configuration_copy;
     }
 
     assert(r->leader_state.change == NULL);
     r->leader_state.change = req;
 
+    fprintf(stderr, "Remove success req:%p\n", (void*)req); fflush(stderr);
     return 0;
 
 err_after_configuration_copy:
