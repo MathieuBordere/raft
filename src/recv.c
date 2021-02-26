@@ -98,6 +98,7 @@ void recvCb(struct raft_io *io, struct raft_message *message)
 {
     struct raft *r = io->data;
     int rv;
+    fprintf(stderr, "recvCb id:%llu state:%d message:%d from:%llu\n", r->id, r->state, message->type, message->server_id); fflush(stderr);
     if (r->state == RAFT_UNAVAILABLE) {
         switch (message->type) {
             case RAFT_IO_APPEND_ENTRIES:
@@ -113,6 +114,7 @@ void recvCb(struct raft_io *io, struct raft_message *message)
     }
     rv = recvMessage(r, message);
     if (rv != 0) {
+        fprintf(stderr, "convertToUnavailable %d\n", rv); fflush(stderr);
         convertToUnavailable(r);
     }
 }
