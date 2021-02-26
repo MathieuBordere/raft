@@ -298,8 +298,15 @@ int replicationProgress(struct raft *r, unsigned i)
     assert(r->state == RAFT_LEADER);
     assert(server->id != r->id);
     assert(next_index >= 1);
+    bool is_promotee = (server->id == r->leader_state.promotee_id);
+    if (is_promotee) {
+        fprintf(stderr, "replicationProgress promotee_id:%llu\n", r->leader_state.promotee_id); fflush(stderr);
+    }
 
     if (!progressShouldReplicate(r, i)) {
+        if (is_promotee) {
+                fprintf(stderr, "replicationProgress progressShouldReplicate false for promotee:%llu\n", r->leader_state.promotee_id); fflush(stderr);
+        }
         return 0;
     }
 
@@ -340,9 +347,15 @@ int replicationProgress(struct raft *r, unsigned i)
         }
     }
 
+    if (is_promotee) {
+        fprintf(stderr, "replicationProgress sendAppendEntries to promotee %llu\n", r->leader_state.promotee_id); fflush(stderr);
+    }
     return sendAppendEntries(r, i, prev_index, prev_term);
 
 send_snapshot:
+    if (is_promotee) {
+        fprintf(stderr, "replicationProgress send snapshot to promotee %llu\n", r->leader_state.promotee_id); fflush(stderr);
+    }
     return sendSnapshot(r, i);
 }
 
@@ -369,11 +382,19 @@ static int triggerAll(struct raft *r)
             server->id != r->leader_state.promotee_id) {
             continue;
         }
+
+        if (server->id == r->leader_state.promotee_id) {
+            fprintf(stderr, "triggerAll promotee_id:%llu\n", r->leader_state.promotee_id); fflush(stderr);
+        }
+
         rv = replicationProgress(r, i);
         if (rv != 0 && rv != RAFT_NOCONNECTION) {
             /* This is not a critical failure, let's just log it. */
             tracef("failed to send append entries to server %u: %s (%d)",
                    server->id, raft_strerror(rv), rv);
+            fprintf(stderr, "triggerAll failed to send append entries to server %llu: %s (%d)",
+                   server->id, raft_strerror(rv), rv);
+            fflush(stderr);
         }
     }
 
@@ -666,6 +687,12 @@ int replicationUpdate(struct raft *r,
 
     progressMarkRecentRecv(r, i);
 
+    /* If the server is currently being promoted and is catching with logs,
+     * update the information about the current catch-up round, and possibly
+     * proceed with the promotion. */
+    is_being_promoted = r->leader_state.promotee_id != 0 &&
+                        r->leader_state.promotee_id == server->id;
+
     /* If the RPC failed because of a log mismatch, retry.
      *
      * From Figure 3.1:
@@ -683,6 +710,9 @@ int replicationUpdate(struct raft *r,
             /* Retry, ignoring errors. */
             tracef("log mismatch -> send old entries to %u", server->id);
             replicationProgress(r, i);
+        }
+        if (is_being_promoted) {
+                fprintf(stderr, "AE result promotee rejected id:%llu\n", server->id); fflush(stderr);
         }
         return 0;
     }
@@ -704,6 +734,9 @@ int replicationUpdate(struct raft *r,
      *   If successful update nextIndex and matchIndex for follower.
      */
     if (!progressMaybeUpdate(r, i, last_index)) {
+        if (is_being_promoted) {
+                fprintf(stderr, "AE don't update progress id:%llu\n", server->id); fflush(stderr);
+        }
         return 0;
     }
 
@@ -719,11 +752,6 @@ int replicationUpdate(struct raft *r,
             progressToPipeline(r, i);
     }
 
-    /* If the server is currently being promoted and is catching with logs,
-     * update the information about the current catch-up round, and possibly
-     * proceed with the promotion. */
-    is_being_promoted = r->leader_state.promotee_id != 0 &&
-                        r->leader_state.promotee_id == server->id;
     if (is_being_promoted) {
         bool is_up_to_date = membershipUpdateCatchUpRound(r);
         fprintf(stderr, "Replication is_being_promoted:%d is_up_to_date:%d\n", is_being_promoted, is_up_to_date); fflush(stderr);

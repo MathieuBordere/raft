@@ -174,11 +174,13 @@ int raft_add(struct raft *r,
              const char *address,
              raft_change_cb cb)
 {
+    fprintf(stderr, "Add leader:%llu id:%llu\n", r->id, id); fflush(stderr);
     struct raft_configuration configuration;
     int rv;
 
     rv = membershipCanChangeConfiguration(r);
     if (rv != 0) {
+        fprintf(stderr, "Add membershipCanChangeConfiguration failed %d\n", rv); fflush(stderr);
         return rv;
     }
 
@@ -200,12 +202,14 @@ int raft_add(struct raft *r,
 
     rv = clientChangeConfiguration(r, req, &configuration);
     if (rv != 0) {
+        fprintf(stderr, "Add clientChangeConfiguration failed %d\n", rv); fflush(stderr);
         goto err_after_configuration_copy;
     }
 
     assert(r->leader_state.change == NULL);
     r->leader_state.change = req;
 
+    fprintf(stderr, "Add membershipCanChangeConfiguration success req:%p\n", (void*)req); fflush(stderr);
     return 0;
 
 err_after_configuration_copy:
