@@ -401,6 +401,7 @@ static void uvSnapshotPutWorkCb(uv_work_t *work)
     char errmsg[RAFT_ERRMSG_BUF_SIZE];
     int rv;
 
+    fprintf(stderr, "uvSnapshotPutWorkCb\n"); fflush(stderr);
     sprintf(metadata, UV__SNAPSHOT_META_TEMPLATE, put->snapshot->term,
             put->snapshot->index, put->meta.timestamp);
 
@@ -457,6 +458,7 @@ static void uvSnapshotPutFinish(struct uvSnapshotPut *put)
 
 static void uvSnapshotPutAfterWorkCb(uv_work_t *work, int status)
 {
+    fprintf(stderr, "uvSnapshotPutAfterWorkCb %d\n", status); fflush(stderr);
     struct uvSnapshotPut *put = work->data;
     struct uv *uv = put->uv;
     bool is_install = put->trailing == 0;
@@ -474,6 +476,7 @@ static void uvSnapshotPutStart(struct uvSnapshotPut *put)
 {
     struct uv *uv = put->uv;
     int rv;
+    fprintf(stderr, "uvSnapshotPutStart\n"); fflush(stderr);
 
     /* If this is an install request, the barrier callback must have fired. */
     if (put->trailing == 0) {
@@ -497,6 +500,7 @@ static void uvSnapshotPutBarrierCb(struct UvBarrier *barrier)
         tracef("uvSnapshotPutBarrierCb already fired, wait for UvUnblock\n");
         return;
     }
+    fprintf(stderr, "uvSnapshotPutBarrierCb\n"); fflush(stderr);
 
     struct uv *uv = put->uv;
     assert(put->trailing == 0);

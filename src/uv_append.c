@@ -731,6 +731,7 @@ int UvBarrier(struct uv *uv,
     queue *head;
 
     assert(!uv->closing);
+    fprintf(stderr, "UvBarrier\n"); fflush(stderr);
 
     /* The next entry will be appended at this index. */
     uv->append_next_index = next_index;
@@ -745,8 +746,10 @@ int UvBarrier(struct uv *uv,
         if (segment->barrier != NULL) {
             continue;
         }
+        fprintf(stderr, "uvBarrier segment:%p ->barrier:%p\n", (void*)segment, (void*)barrier); fflush(stderr);
         segment->barrier = barrier;
         if (segment == uvGetCurrentAliveSegment(uv)) {
+            fprintf(stderr, "uvFinalizeCurrentAliveSegmentOnceIdle\n"); fflush(stderr);
             uvFinalizeCurrentAliveSegmentOnceIdle(uv);
             continue;
         }
@@ -773,6 +776,7 @@ int UvBarrier(struct uv *uv,
 
 void UvUnblock(struct uv *uv)
 {
+    fprintf(stderr, "UvUnblock\n"); fflush(stderr);
     assert(uv->barrier != NULL);
     uv->barrier = NULL;
     if (uv->closing) {

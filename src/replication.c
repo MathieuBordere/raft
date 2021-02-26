@@ -188,11 +188,14 @@ static void sendSnapshotGetCb(struct raft_io_snapshot_get *get,
     unsigned i = 0;
     int rv;
 
+    fprintf(stderr, "sendSnapshotGetCb status %d\n", status); fflush(stderr);
+
     if (status != 0) {
         tracef("get snapshot %s", raft_strerror(status));
         goto abort;
     }
     if (r->state != RAFT_LEADER) {
+        fprintf(stderr, "sendSnapshotGetCb not leader\n"); fflush(stderr);
         goto abort_with_snapshot;
     }
 
@@ -200,6 +203,7 @@ static void sendSnapshotGetCb(struct raft_io_snapshot_get *get,
 
     if (server == NULL) {
         /* Probably the server was removed in the meantime. */
+        fprintf(stderr, "sendSnapshotGetCb server is NULL\n"); fflush(stderr);
         goto abort_with_snapshot;
     }
 
@@ -208,6 +212,7 @@ static void sendSnapshotGetCb(struct raft_io_snapshot_get *get,
 
     if (!progress_state_is_snapshot) {
         /* Something happened in the meantime. */
+        fprintf(stderr, "sendSnapshotGetCb no longer snapshot state\n"); fflush(stderr);
         goto abort_with_snapshot;
     }
 
@@ -229,9 +234,12 @@ static void sendSnapshotGetCb(struct raft_io_snapshot_get *get,
 
     tracef("sending snapshot with last index %llu to %u", snapshot->index,
            server->id);
+    fprintf(stderr, "sendSnapshotGetCb sending snapshot with last index %llu to %llu\n", snapshot->index,
+           server->id); fflush(stderr);
 
     rv = r->io->send(r->io, &req->send, &message, sendInstallSnapshotCb);
     if (rv != 0) {
+        fprintf(stderr, "sendSnapshotGetCb failed %d\n", rv); fflush(stderr);
         goto abort_with_snapshot;
     }
 
@@ -330,6 +338,7 @@ int replicationProgress(struct raft *r, unsigned i)
         if (snapshot_index > 0) {
             raft_index last_index = logLastIndex(&r->log);
             assert(last_index > 0); /* The log can't be empty */
+            fprintf(stderr, "replicationProgress snapshot next_index 1 snapshot_index %llu\n", snapshot_index); fflush(stderr);
             goto send_snapshot;
         }
         prev_index = 0;
@@ -343,6 +352,7 @@ int replicationProgress(struct raft *r, unsigned i)
         if (prev_term == 0) {
             assert(prev_index < snapshot_index);
             tracef("missing entry at index %lld -> send snapshot", prev_index);
+            fprintf(stderr, "replicationProgress snapshot prev_index %llu snapshot_index %llu\n", prev_index, snapshot_index); fflush(stderr);
             goto send_snapshot;
         }
     }
@@ -1201,6 +1211,7 @@ static void installSnapshotCb(struct raft_io_snapshot_put *req, int status)
     r->snapshot.put.data = NULL;
 
     result.term = r->current_term;
+    fprintf(stderr, "installSnapshotCb status %d\n", status); fflush(stderr);
 
     /* If we are shutting down, let's discard the result. TODO: what about other
      * states? */
@@ -1223,6 +1234,7 @@ static void installSnapshotCb(struct raft_io_snapshot_put *req, int status)
      */
     rv = snapshotRestore(r, snapshot);
     if (rv != 0) {
+        fprintf(stderr, "installSnapshotCb snapshotRestore failed %d\n", rv); fflush(stderr);
         result.rejected = snapshot->index;
         tracef("restore snapshot %llu: %s", snapshot->index,
                raft_strerror(status));
@@ -1270,18 +1282,21 @@ int replicationInstallSnapshot(struct raft *r,
      * something smarter. */
     if (r->snapshot.pending.term != 0 || r->snapshot.put.data != NULL) {
         *async = true;
+        fprintf(stderr, "replicationInstallSnapshot BUSY\n"); fflush(stderr);
         return RAFT_BUSY;
     }
 
     /* If our last snapshot is more up-to-date, this is a no-op */
     if (r->log.snapshot.last_index >= args->last_index) {
         *rejected = 0;
+        fprintf(stderr, "replicationInstallSnapshot no-op 1\n"); fflush(stderr);
         return 0;
     }
 
     /* If we already have all entries in the snapshot, this is a no-op */
     local_term = logTermOf(&r->log, args->last_index);
     if (local_term != 0 && local_term >= args->last_term) {
+        fprintf(stderr, "replicationInstallSnapshot no-op 2\n"); fflush(stderr);
         *rejected = 0;
         return 0;
     }
@@ -1316,10 +1331,12 @@ int replicationInstallSnapshot(struct raft *r,
 
     assert(r->snapshot.put.data == NULL);
     r->snapshot.put.data = request;
+    fprintf(stderr, "replicationInstallSnapshot snapshotput %d\n", rv); fflush(stderr);
     rv = r->io->snapshot_put(r->io,
                              0 /* zero trailing means replace everything */,
                              &r->snapshot.put, snapshot, installSnapshotCb);
     if (rv != 0) {
+        fprintf(stderr, "replicationInstallSnapshot snapshotput failed %d\n", rv); fflush(stderr);
         goto err_after_bufs_alloc;
     }
 
