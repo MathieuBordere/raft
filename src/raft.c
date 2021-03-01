@@ -22,7 +22,7 @@
 /* Number of milliseconds after which a server promotion will be aborted if the
  * server hasn't caught up with the logs yet. */
 #define DEFAULT_MAX_CATCH_UP_ROUNDS 10
-#define DEFAULT_MAX_CATCH_UP_ROUND_DURATION (5 * 1000)
+#define DEFAULT_MAX_CATCH_UP_ROUND_DURATION (50 * 1000)
 
 int raft_init(struct raft *r,
               struct raft_io *io,
