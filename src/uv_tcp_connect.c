@@ -104,6 +104,7 @@ static void uvTcpConnectUvWriteCb(struct uv_write_s *write, int status)
 
     if (status != 0) {
         assert(status != UV_ECANCELED); /* t->closing would have been true */
+        fprintf(stderr, "uvTcpConnectUvWriteCb RAFT_NOCONNECTION\n"); fflush(stderr);
         connect->status = RAFT_NOCONNECTION;
         uvTcpConnectAbort(connect);
         return;
@@ -127,6 +128,7 @@ static void uvTcpConnectUvConnectCb(struct uv_connect_s *req, int status)
     if (status != 0) {
         assert(status != UV_ECANCELED); /* t->closing would have been true */
         connect->status = RAFT_NOCONNECTION;
+        fprintf(stderr, "uvTcpConnectUvConnectCb RAFT_NOCONNECTION\n"); fflush(stderr);
         ErrMsgPrintf(t->transport->errmsg, "uv_tcp_connect(): %s",
                      uv_strerror(status));
         goto err;
@@ -136,6 +138,7 @@ static void uvTcpConnectUvConnectCb(struct uv_connect_s *req, int status)
                   &connect->handshake, 1, uvTcpConnectUvWriteCb);
     if (rv != 0) {
         /* UNTESTED: what are the error conditions? perhaps ENOMEM */
+        fprintf(stderr, "uvTcpConnectUvConnectCb uv_write %d RAFT_NOCONNECTION\n", rv); fflush(stderr);
         connect->status = RAFT_NOCONNECTION;
         goto err;
     }
@@ -152,6 +155,8 @@ static int uvTcpConnectStart(struct uvTcpConnect *r, const char *address)
     struct UvTcp *t = r->t;
     struct sockaddr_in addr;
     int rv;
+
+    fprintf(stderr, "tcp start address:%s\n", address); fflush(stderr);
 
     rv = uvIpParse(address, &addr);
     if (rv != 0) {
@@ -184,10 +189,12 @@ static int uvTcpConnectStart(struct uvTcpConnect *r, const char *address)
          * lack of system resources */
         ErrMsgPrintf(t->transport->errmsg, "uv_tcp_connect(): %s",
                      uv_strerror(rv));
+        fprintf(stderr, "tcp start RAFT_NOCONNECTION address:%s\n", address); fflush(stderr);
         rv = RAFT_NOCONNECTION;
         goto err_after_tcp_init;
     }
 
+    fprintf(stderr, "tcp start success address:%s\n", address); fflush(stderr);
     return 0;
 
 err_after_tcp_init:
@@ -209,6 +216,8 @@ int UvTcpConnect(struct raft_uv_transport *transport,
     int rv;
     (void)id;
     assert(!t->closing);
+
+    fprintf(stderr, "tcp connect address:%s\n", address); fflush(stderr);
 
     /* Create and initialize a new TCP connection request object */
     r = HeapMalloc(sizeof *r);
@@ -234,6 +243,7 @@ int UvTcpConnect(struct raft_uv_transport *transport,
         goto err_after_alloc;
     }
 
+    fprintf(stderr, "tcp connect success address:%s\n", address); fflush(stderr);
     return 0;
 
 err_after_alloc:

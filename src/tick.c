@@ -182,6 +182,7 @@ static int tickLeader(struct raft *r)
             change = r->leader_state.change;
             r->leader_state.change = NULL;
             if (change != NULL && change->cb != NULL) {
+                fprintf(stderr, "tickCb Promotion Too Slow RAFT_NOCONNECTION\n"); fflush(stderr);
                 change->cb(change, RAFT_NOCONNECTION);
             }
         }

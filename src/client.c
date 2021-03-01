@@ -174,7 +174,7 @@ int raft_add(struct raft *r,
              const char *address,
              raft_change_cb cb)
 {
-    fprintf(stderr, "Add leader:%llu id:%llu\n", r->id, id); fflush(stderr);
+    fprintf(stderr, "Add leader:%llu id:%llu address:%s\n", r->id, id, address); fflush(stderr);
     struct raft_configuration configuration;
     int rv;
 

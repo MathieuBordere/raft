@@ -25,6 +25,7 @@ int uvIpParse(const char *address, struct sockaddr_in *addr)
 
     rv = uv_ip4_addr(host, atoi(port), addr);
     if (rv != 0) {
+        fprintf(stderr, "IP PARSE FAILED address:%s\n", address); fflush(stderr);
         return RAFT_NOCONNECTION;
     }
 

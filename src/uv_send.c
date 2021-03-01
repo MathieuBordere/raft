@@ -329,6 +329,7 @@ static void uvClientConnectCb(struct raft_uv_connect *req,
             old_req = old_send->req;
             uvSendDestroy(old_send);
             if (old_req->cb != NULL) {
+                fprintf(stderr, "UvClientConnectCb RAFT_NOCONNECTION\n"); fflush(stderr);
                 old_req->cb(old_req, RAFT_NOCONNECTION);
             }
         }
