@@ -161,7 +161,7 @@ static void sendInstallSnapshotCb(struct raft_io_send *send, int status)
 
     server = configurationGet(&r->configuration, req->server_id);
 
-    fprintf(stderr, "sendInstallSnapshotCb status: %d server:%llu", status, server ? server->id : 1111); fflush(stderr);
+    fprintf(stderr, "sendInstallSnapshotCb status: %d server:%llu\n", status, server ? server->id : 1111); fflush(stderr);
     if (status != 0) {
         tracef("send install snapshot: %s", raft_strerror(status));
         if (r->state == RAFT_LEADER && server != NULL) {

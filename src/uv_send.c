@@ -282,6 +282,7 @@ static void uvClientConnectCb(struct raft_uv_connect *req,
     int rv;
 
     tracef("connect attempt completed -> status %s", errCodeToString(status));
+    fprintf(stderr, "UvClientConnectCb status:%d\n", status); fflush(stderr);
 
     assert(c->connect.data != NULL);
     assert(c->stream == NULL);
