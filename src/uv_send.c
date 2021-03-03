@@ -416,6 +416,7 @@ static int uvGetClient(struct uv *uv,
     queue *head;
     int rv;
 
+    /* TODO uv->clients is the cache */
     /* Check if we already have a client object for this peer server. */
     QUEUE_FOREACH(head, &uv->clients)
     {
@@ -423,8 +424,11 @@ static int uvGetClient(struct uv *uv,
         if ((*client)->id != id) {
             continue;
         }
-        /* TODO: handle a change in the address */
-        /* assert(strcmp((*client)->address, address) == 0); */
+
+        if (strcmp((*client)->address, address) != 0) {
+            fprintf(stderr, "uvGetClient id:%llu STALE CACHE - create new connection\n", id); fflush(stderr);
+            break;
+        }
         return 0;
     }
 
